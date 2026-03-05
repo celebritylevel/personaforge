@@ -17,6 +17,16 @@ export async function onRequestPost(context) {
     
     const perplexityKey = env.PERPLEXITY_API_KEY;
     
+    if (!perplexityKey) {
+      return new Response(JSON.stringify({ error: 'API key not configured' }), {
+        status: 500,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+    
     const isOnlyFans = website?.toLowerCase().includes('onlyfans');
     const isFanvue = website?.toLowerCase().includes('fanvue');
     const platform = isOnlyFans ? 'OnlyFans' : isFanvue ? 'Fanvue' : '';
@@ -58,10 +68,53 @@ Respond ONLY with valid JSON:
       }),
     });
     
+    if (!response.ok) {
+      const errorData = await response.text();
+      return new Response(JSON.stringify({ error: `API error: ${response.status}` }), {
+        status: 500,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+    
     const data = await response.json();
+    
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      return new Response(JSON.stringify({ error: 'Invalid API response' }), {
+        status: 500,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+    
     const content = data.choices[0].message.content;
     const jsonMatch = content.match(/\{[\s\S]*\}/);
+    
+    if (!jsonMatch) {
+      return new Response(JSON.stringify({ error: 'Could not parse response' }), {
+        status: 500,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+    
     const result = JSON.parse(jsonMatch[0]);
+    
+    if (!result.personas || !Array.isArray(result.personas)) {
+      return new Response(JSON.stringify({ error: 'No personas found in response' }), {
+        status: 500,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
     
     const personas = result.personas.map((p, i) => ({
       id: `persona-${i}`,
@@ -71,20 +124,25 @@ Respond ONLY with valid JSON:
     const db = env.DB;
     const id = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     
-    await db.prepare(
-      'INSERT INTO icp_research (id, product_description, website, personas, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-    ).bind(
-      id, 
-      productDescription || result.product, 
-      website || '', 
-      JSON.stringify(personas),
-      new Date().toISOString(),
-      new Date().toISOString()
-    ).run();
+    try {
+      await db.prepare(
+        'INSERT INTO icp_research (id, product_description, website, personas, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
+      ).bind(
+        id, 
+        productDescription || result.product || '', 
+        website || '', 
+        JSON.stringify(personas),
+        new Date().toISOString(),
+        new Date().toISOString()
+      ).run();
+    } catch (dbError) {
+      // Continue even if DB fails - return the result anyway
+      console.error('Database error:', dbError);
+    }
     
     return new Response(JSON.stringify({
       id,
-      productDescription: productDescription || result.product,
+      productDescription: productDescription || result.product || '',
       website: website || '',
       personas,
       createdAt: new Date().toISOString(),
@@ -95,7 +153,7 @@ Respond ONLY with valid JSON:
       }
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error.message || 'Unknown error' }), {
       status: 500,
       headers: { 
         'Content-Type': 'application/json',
