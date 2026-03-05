@@ -4,9 +4,31 @@ import { generateId } from './utils';
 const memoryResearchStore = new Map<string, ICPResearch>();
 const memoryAnglesStore = new Map<string, AnglesResponse>();
 
-function getD1Database() {
-  if (typeof process !== 'undefined' && process.env.CLOUDFLARE_D1) {
-    return (globalThis as unknown as { DB: D1Database }).DB;
+interface D1Result<T = unknown> {
+  results: T[];
+  success: boolean;
+  error?: string;
+}
+
+interface D1PreparedStatement {
+  bind(...values: unknown[]): D1PreparedStatement;
+  first<T = unknown>(): Promise<T | null>;
+  all<T = unknown>(): Promise<D1Result<T>>;
+  run(): Promise<D1Result>;
+}
+
+interface D1Database {
+  prepare(query: string): D1PreparedStatement;
+}
+
+declare global {
+  // eslint-disable-next-line no-var
+  var DB: D1Database | undefined;
+}
+
+function getD1Database(): D1Database | null {
+  if (typeof globalThis !== 'undefined' && globalThis.DB) {
+    return globalThis.DB;
   }
   return null;
 }
