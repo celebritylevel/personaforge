@@ -7,9 +7,9 @@ import PersonasList from '@/components/PersonasList';
 import AnglesGenerator from '@/components/AnglesGenerator';
 
 export default function Dashboard() {
-  const [researchHistory, setResearchHistory] = useState([]);
-  const [selectedResearch, setSelectedResearch] = useState(null);
-  const [angles, setAngles] = useState(null);
+  const [researchHistory, setResearchHistory] = useState<any[]>([]);
+  const [selectedResearch, setSelectedResearch] = useState<any | null>(null);
+  const [angles, setAngles] = useState<any[] | null>(null);
   const [activeTab, setActiveTab] = useState('discovery');
 
   return (
