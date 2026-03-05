@@ -1,6 +1,6 @@
 'use client';
 
-export default function Sidebar({ researchHistory, selectedResearchId, onSelectResearch }) {
+export default function Sidebar({ researchHistory, selectedResearchId, onSelectResearch }: { researchHistory: any; selectedResearchId: string | null; onSelectResearch: (id: string) => void }) {
   return (
     <aside className="w-64 bg-[#161616] border-r border-[#2a2a2a] h-screen sticky top-0 overflow-y-auto">
       <div className="p-4 border-b border-[#2a2a2a]">

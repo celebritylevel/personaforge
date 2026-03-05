@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-export default function AnglesGenerator({ research }) {
+export default function AnglesGenerator({ research }: { research: any }) {
   const [angles, setAngles] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [expandedAngle, setExpandedAngle] = useState(null);

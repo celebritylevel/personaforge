@@ -1,6 +1,6 @@
 'use client';
 
-export default function PersonasList({ personas }) {
+export default function PersonasList({ personas }: { personas: any }) {
   if (!personas || personas.length === 0) return null;
 
   return (
