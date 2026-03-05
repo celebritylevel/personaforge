@@ -2,3 +2,8 @@ name = "personaforge"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "out"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "personaforge-db"
+database_id = "59c9eaad-5838-4da0-9113-7b1314a0ea77"

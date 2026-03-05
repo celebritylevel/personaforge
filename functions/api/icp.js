@@ -8,10 +8,7 @@ export async function onRequestPost(context) {
     if (!productDescription && !website) {
       return new Response(JSON.stringify({ error: 'Provide product description or website' }), {
         status: 400,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
     
@@ -20,10 +17,7 @@ export async function onRequestPost(context) {
     if (!perplexityKey) {
       return new Response(JSON.stringify({ error: 'API key not configured' }), {
         status: 500,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
     
@@ -34,22 +28,19 @@ export async function onRequestPost(context) {
     let contextPrompt = '';
     
     if (platform && website) {
-      contextPrompt = `The product is a subscription to a ${platform} creator. Research this creator.`;
+      contextPrompt = `The product is a subscription to a ${platform} creator at ${website}. Research this creator's content niche, style, and audience. Create 10 distinct personas who would subscribe.`;
     } else if (website && !productDescription) {
-      contextPrompt = `Analyze the website: ${website}.`;
+      contextPrompt = `Analyze the website: ${website}. Create 10 distinct personas who would be interested in this product.`;
     } else if (productDescription) {
-      contextPrompt = `The product/service is: ${productDescription}.`;
+      contextPrompt = `The product/service is: ${productDescription}. Create 10 distinct personas who would buy this.`;
     }
     
-    const systemPrompt = `You are a marketing strategist for Meta Ads. Create at least 10 distinct personas.
+    const systemPrompt = `You are a marketing strategist. Respond ONLY with valid JSON (no markdown, no formatting).
 
-For each persona provide: name, description, painPoints (array), buyingReasons (array), demographics (object with ageRange, gender, location, income, occupation), psychographics (array), angleHook.
+Return this exact JSON structure:
+{"product":"brief description","personas":[{"name":"The [Archetype]","description":"2 sentences","painPoints":["point1","point2"],"buyingReasons":["reason1","reason2"],"demographics":{"ageRange":"25-34","gender":"All","location":"US","income":"$50k-80k","occupation":"Professional"},"psychographics":["trait1","trait2"],"angleHook":"Compelling hook"}]}
 
-Respond ONLY with valid JSON:
-{
-  "product": "Brief description",
-  "personas": [{ "name": "...", "description": "...", "painPoints": [], "buyingReasons": [], "demographics": {}, "psychographics": [], "angleHook": "..." }]
-}`;
+IMPORTANT: Return ONLY valid JSON. No markdown. No extra text.`;
 
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
@@ -69,13 +60,10 @@ Respond ONLY with valid JSON:
     });
     
     if (!response.ok) {
-      const errorData = await response.text();
-      return new Response(JSON.stringify({ error: `API error: ${response.status}` }), {
+      const errorText = await response.text();
+      return new Response(JSON.stringify({ error: `API error: ${response.status} - ${errorText}` }), {
         status: 500,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
     
@@ -84,41 +72,51 @@ Respond ONLY with valid JSON:
     if (!data.choices || !data.choices[0] || !data.choices[0].message) {
       return new Response(JSON.stringify({ error: 'Invalid API response' }), {
         status: 500,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
     
-    const content = data.choices[0].message.content;
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    let content = data.choices[0].message.content;
+    
+    // Remove markdown formatting if present
+    content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    
+    // Find JSON object
+    const jsonMatch = content.match(/\{[\s\S]*"personas"[\s\S]*\}/);
     
     if (!jsonMatch) {
-      return new Response(JSON.stringify({ error: 'Could not parse response' }), {
+      return new Response(JSON.stringify({ error: 'Could not find personas in response', raw: content.substring(0, 500) }), {
         status: 500,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
     
-    const result = JSON.parse(jsonMatch[0]);
+    let result;
+    try {
+      result = JSON.parse(jsonMatch[0]);
+    } catch (e) {
+      return new Response(JSON.stringify({ error: 'Failed to parse JSON', raw: content.substring(0, 500) }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
     
     if (!result.personas || !Array.isArray(result.personas)) {
-      return new Response(JSON.stringify({ error: 'No personas found in response' }), {
+      return new Response(JSON.stringify({ error: 'No personas found' }), {
         status: 500,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
     
     const personas = result.personas.map((p, i) => ({
       id: `persona-${i}`,
-      ...p
+      name: p.name || `Persona ${i+1}`,
+      description: p.description || '',
+      painPoints: p.painPoints || [],
+      buyingReasons: p.buyingReasons || [],
+      demographics: p.demographics || {},
+      psychographics: p.psychographics || [],
+      angleHook: p.angleHook || ''
     }));
     
     const db = env.DB;
@@ -136,7 +134,6 @@ Respond ONLY with valid JSON:
         new Date().toISOString()
       ).run();
     } catch (dbError) {
-      // Continue even if DB fails - return the result anyway
       console.error('Database error:', dbError);
     }
     
@@ -147,18 +144,12 @@ Respond ONLY with valid JSON:
       personas,
       createdAt: new Date().toISOString(),
     }), {
-      headers: { 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      }
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message || 'Unknown error' }), {
       status: 500,
-      headers: { 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      }
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
   }
 }
