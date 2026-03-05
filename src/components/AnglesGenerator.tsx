@@ -3,9 +3,9 @@
 import { useState } from 'react';
 
 export default function AnglesGenerator({ research }: { research: any }) {
-  const [angles, setAngles] = useState(null);
+  const [angles, setAngles] = useState<any[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [expandedAngle, setExpandedAngle] = useState(null);
+  const [expandedAngle, setExpandedAngle] = useState<string | null>(null);
 
   if (!research) {
     return (
