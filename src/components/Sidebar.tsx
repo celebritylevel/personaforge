@@ -14,7 +14,7 @@ export default function Sidebar({ researchHistory, selectedResearchId, onSelectR
           <p className="text-sm text-[#737373]">No research yet</p>
         ) : (
           <div className="space-y-2">
-            {researchHistory.map((research) => (
+            {researchHistory.map((research: any) => (
               <button
                 key={research.id}
                 onClick={() => onSelectResearch(research.id)}
