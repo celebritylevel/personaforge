@@ -15,11 +15,11 @@ CREATE TABLE IF NOT EXISTS creator_profiles (
   posts_count INTEGER DEFAULT 0,
   subscribe_price TEXT,
   join_date TEXT,
-  is_verified INTEGER DEFAULT 0,
-  raw_data TEXT,
-  personas TEXT,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  is_verified BOOLEAN DEFAULT FALSE,
+  raw_data JSONB,
+  personas JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ICP Research Table
@@ -27,50 +27,47 @@ CREATE TABLE IF NOT EXISTS icp_research (
   id TEXT PRIMARY KEY,
   product_description TEXT NOT NULL,
   website TEXT,
-  personas TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  personas JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Angles Table
 CREATE TABLE IF NOT EXISTS angles (
   id TEXT PRIMARY KEY,
-  icp_research_id TEXT,
-  creator_profile_id TEXT,
-  angles TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  FOREIGN KEY (icp_research_id) REFERENCES icp_research(id),
-  FOREIGN KEY (creator_profile_id) REFERENCES creator_profiles(id)
+  icp_research_id TEXT REFERENCES icp_research(id),
+  creator_profile_id TEXT REFERENCES creator_profiles(id),
+  angles JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Creator Domain Configs Table
 CREATE TABLE IF NOT EXISTS creator_domain_configs (
   id TEXT PRIMARY KEY,
-  creator_id TEXT NOT NULL UNIQUE,
+  creator_id TEXT NOT NULL UNIQUE REFERENCES creator_profiles(id),
   primary_domain TEXT,
   edge_domain TEXT,
   auto_address_provider TEXT DEFAULT 'ipostal1',
   business_email TEXT,
   business_address TEXT,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  FOREIGN KEY (creator_id) REFERENCES creator_profiles(id)
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Landing Pages Table
 CREATE TABLE IF NOT EXISTS landing_pages (
   id TEXT PRIMARY KEY,
-  creator_id TEXT NOT NULL,
+  creator_id TEXT NOT NULL REFERENCES creator_profiles(id),
   persona_id TEXT,
   persona_name TEXT,
   slug TEXT NOT NULL,
   full_path TEXT,
   type TEXT NOT NULL,
-  spec TEXT NOT NULL,
-  meta_safe INTEGER DEFAULT 1,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  FOREIGN KEY (creator_id) REFERENCES creator_profiles(id)
+  spec JSONB NOT NULL,
+  meta_safe BOOLEAN DEFAULT TRUE,
+  html_content TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Create indexes
