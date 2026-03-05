@@ -1,15 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
 
 export default function ICPDiscovery() {
   const [productDescription, setProductDescription] = useState('');
   const [website, setWebsite] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [result, setResult] = useState(null);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<any>(null);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
@@ -29,7 +29,7 @@ export default function ICPDiscovery() {
       const research = await response.json();
       setResult(research);
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setIsLoading(false);
     }
